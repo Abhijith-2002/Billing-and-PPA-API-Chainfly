@@ -10,14 +10,12 @@ A lightweight API for managing solar client billing and Power Purchase Agreement
 - PPA contract management
 - PDF invoice generation and export
 - Firebase authentication
-- Optional email notifications
 
 ## Tech Stack
 
 - FastAPI (Backend)
 - Firebase (Authentication & Database)
 - ReportLab (PDF Generation)
-- Bootstrap (Frontend - Optional)
 
 ## Setup Instructions
 
