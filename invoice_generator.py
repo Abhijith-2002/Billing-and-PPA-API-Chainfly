@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
+from fastapi.concurrency import run_in_threadpool # <--- 1. IMPORT THIS
+
 from firebase_config import db
 
 class EnergyUsage(BaseModel):
@@ -8,9 +10,13 @@ class EnergyUsage(BaseModel):
     month: int
     year: int
     usage_kwh: float
+    # The 'timestamp' field is fine, but it won't be saved to the Invoice model below.
+    # To set a default value on creation, use `default_factory`.
     timestamp: datetime = datetime.now()
 
 class Invoice(BaseModel):
+    # It's good practice to include the ID in the model itself.
+    id: Optional[str] = None
     customer_id: str
     month: int
     year: int
@@ -38,24 +44,32 @@ async def generate_invoice(usage: EnergyUsage, tariff_rate: float) -> Invoice:
         total_amount=total_amount
     )
     
-    # Save to Firestore
+    # Prepare to save to Firestore
     invoice_ref = db.collection('invoices').document()
+    invoice.id = invoice_ref.id  # Assign the new ID to the model
     invoice_dict = invoice.model_dump()
-    invoice_dict['id'] = invoice_ref.id
-    await invoice_ref.set(invoice_dict)
+    
+    ## FIX: Use run_in_threadpool for the blocking .set() call
+    await run_in_threadpool(invoice_ref.set, invoice_dict)
     
     return invoice
 
-async def get_customer_invoices(customer_id: str) -> list[Invoice]:
+async def get_customer_invoices(customer_id: str) -> List[Invoice]:
     """Get all invoices for a customer"""
     invoices_ref = db.collection('invoices').where('customer_id', '==', customer_id)
-    invoices = await invoices_ref.get()
-    return [Invoice(**doc.to_dict()) for doc in invoices]
+    
+    ## FIX: Use run_in_threadpool for the blocking .get() call
+    query_snapshot = await run_in_threadpool(invoices_ref.get)
+    
+    return [Invoice(**doc.to_dict()) for doc in query_snapshot]
 
 async def get_invoice_by_id(invoice_id: str) -> Optional[Invoice]:
     """Get a specific invoice by ID"""
     invoice_ref = db.collection('invoices').document(invoice_id)
-    invoice_doc = await invoice_ref.get()
+    
+    ## FIX: Use run_in_threadpool for the blocking .get() call
+    invoice_doc = await run_in_threadpool(invoice_ref.get)
+    
     if invoice_doc.exists:
         return Invoice(**invoice_doc.to_dict())
     return None
@@ -63,14 +77,21 @@ async def get_invoice_by_id(invoice_id: str) -> Optional[Invoice]:
 async def mark_invoice_as_paid(invoice_id: str) -> Optional[Invoice]:
     """Mark an invoice as paid"""
     invoice_ref = db.collection('invoices').document(invoice_id)
-    invoice_doc = await invoice_ref.get()
+    
+    ## FIX: Use run_in_threadpool for the blocking .get() call
+    invoice_doc = await run_in_threadpool(invoice_ref.get)
     
     if not invoice_doc.exists:
         return None
         
-    invoice_data = invoice_doc.to_dict()
-    invoice_data['status'] = 'paid'
-    invoice_data['paid_at'] = datetime.now()
+    update_data = {
+        'status': 'paid',
+        'paid_at': datetime.now()
+    }
     
-    await invoice_ref.update(invoice_data)
-    return Invoice(**invoice_data) 
+    ## FIX: Use run_in_threadpool for the blocking .update() call
+    await run_in_threadpool(invoice_ref.update, update_data)
+    
+    # Return the updated invoice data by merging the original data with the update
+    updated_invoice_data = {**invoice_doc.to_dict(), **update_data}
+    return Invoice(**updated_invoice_data)
