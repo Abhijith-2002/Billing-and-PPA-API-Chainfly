@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -141,9 +141,9 @@ async def get_invoice_pdf(invoice_id: str, background_tasks: BackgroundTasks, cu
 # Contract endpoints
 @app.post("/contracts")
 async def upload_contract(
-    customer_id: str,
-    start_date: datetime,
-    end_date: datetime,
+    customer_id: str = Form(...),
+    start_date: datetime = Form(...),
+    end_date: datetime = Form(...),
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
