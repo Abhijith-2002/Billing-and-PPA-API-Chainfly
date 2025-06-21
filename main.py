@@ -9,7 +9,15 @@ import os
 import tempfile
 from pydantic import BaseModel, Field
 
-from firebase_config import verify_token, db
+# Import Firebase configuration with error handling
+try:
+    from firebase_config import verify_token, db
+    FIREBASE_AVAILABLE = True
+except Exception as e:
+    print(f"Firebase not available: {str(e)}")
+    FIREBASE_AVAILABLE = False
+    db = None
+
 from invoice_generator import (
     EnergyUsage, Invoice, generate_invoice,
     get_customer_invoices, get_invoice_by_id,
@@ -78,14 +86,30 @@ class PPACreateRequest(BaseModel):
 
 # Authentication dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not FIREBASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+    
     user = await run_in_threadpool(verify_token, credentials.credentials)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
     return user
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "firebase_available": FIREBASE_AVAILABLE,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 # Customer endpoints
 @app.post("/customers")
 async def create_customer(customer: Customer, current_user: dict = Depends(get_current_user)):
+    if not FIREBASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    
     customer_ref = db.collection('customers').document()
     customer_dict = customer.model_dump()
     customer_dict['id'] = customer_ref.id
@@ -94,6 +118,9 @@ async def create_customer(customer: Customer, current_user: dict = Depends(get_c
 
 @app.get("/customers")
 async def list_customers(current_user: dict = Depends(get_current_user)):
+    if not FIREBASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    
     customers_ref = db.collection('customers')
     customers = await run_in_threadpool(customers_ref.get)
     return [doc.to_dict() for doc in customers]
@@ -105,6 +132,9 @@ async def create_ppa(
     current_user: dict = Depends(get_current_user)
 ):
     """Create a new PPA with all necessary specifications and terms"""
+    if not FIREBASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    
     # Ensure all datetime fields are timezone-aware
     ppa_request.ensure_timezone()
     
