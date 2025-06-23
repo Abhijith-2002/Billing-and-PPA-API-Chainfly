@@ -50,7 +50,7 @@ def create_invoice_pdf(invoice: Invoice, customer_name: str, output_path: str) -
     # Usage Details
     usage_data = [
         ["Description", "Quantity", "Rate", "Amount"],
-        ["Energy Usage", f"{invoice.usage_kwh} kWh", f"${invoice.tariff_rate:.2f}", f"${invoice.total_amount:.2f}"]
+        ["Energy Usage", f"{invoice.kwh_used} kWh", f"INR {invoice.tariff_rate:.2f}", f"INR {invoice.total_amount:.2f}"]
     ]
 
     # Create usage table
@@ -72,7 +72,7 @@ def create_invoice_pdf(invoice: Invoice, customer_name: str, output_path: str) -
     elements.append(Spacer(1, 30))
 
     # Total
-    total_data = [["Total Amount:", f"${invoice.total_amount:.2f}"]]
+    total_data = [["Total Amount:", f"INR {invoice.total_amount:.2f}"]]
     total_table = Table(total_data, colWidths=[4*inch, 2*inch])
     total_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),

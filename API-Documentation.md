@@ -27,7 +27,10 @@ Request body:
 {
     "name": "John Doe",
     "email": "john@example.com",
-    "address": "123 Solar Street, Mumbai, Maharashtra"
+    "address": "123 Solar Street, Mumbai, Maharashtra",
+    "customerType": "commercial",
+    "gstNumber": "27AAAPL1234C1ZV",
+    "linkedPPAs": ["ppa123", "ppa456"]
 }
 ```
 
@@ -51,42 +54,66 @@ Request body:
         "panel_type": "Monocrystalline",
         "inverter_type": "String Inverter",
         "installation_date": "2024-03-15T00:00:00Z",
-        "estimated_annual_production": 15000.0
+        "estimated_annual_production": 15000.0,
+        "systemLocation": {"lat": 19.076, "long": 72.8777},
+        "moduleManufacturer": "Tata Power Solar",
+        "inverterBrand": "SMA",
+        "expectedGeneration": 15500.0,
+        "actualGeneration": 14800.0,
+        "systemAgeInMonths": 12
     },
     "billing_terms": {
         "tariff_rate": 8.50,
         "escalation_rate": 0.03,
         "billing_cycle": "monthly",
-        "payment_terms": "net30"
+        "payment_terms": "net30",
+        "slabs": [
+            {"min": 0, "max": 100, "rate": 8.0, "unit": "kWh"},
+            {"min": 100, "max": 500, "rate": 7.5, "unit": "kWh"}
+        ],
+        "touRates": [
+            {"timeRange": "22:00-06:00", "rate": 6.5, "unit": "kWh"},
+            {"timeRange": "06:00-22:00", "rate": 8.5, "unit": "kWh"}
+        ],
+        "taxRate": 18.0,
+        "latePaymentPenaltyRate": 2.0,
+        "currency": "INR",
+        "subsidySchemeId": "MNRE-2024-01",
+        "autoInvoice": true,
+        "gracePeriodDays": 7
     },
     "start_date": "2024-03-15T00:00:00Z",
-    "end_date": "2034-03-14T00:00:00Z"
+    "end_date": "2034-03-14T00:00:00Z",
+    "contractType": "net_metering",
+    "signatories": [
+        {"name": "Abhi Kumar", "role": "Customer", "signedAt": "2024-03-15T00:00:00Z"},
+        {"name": "Chainfly Rep", "role": "Company", "signedAt": null}
+    ],
+    "terminationClause": "Either party may terminate with 30 days written notice.",
+    "paymentTerms": "net30",
+    "curtailmentClauses": "Curtailment as per grid operator instructions.",
+    "generationGuarantees": "Minimum 95% of expected generation guaranteed.",
+    "createdBy": "admin@chainfly.com"
 }
 ```
 
-Response:
+Response (success):
 ```json
 {
     "id": "ppa123",
     "customer_id": "customer123",
-    "system_specs": {
-        "capacity_kw": 10.5,
-        "panel_type": "Monocrystalline",
-        "inverter_type": "String Inverter",
-        "installation_date": "2024-03-15T00:00:00Z",
-        "estimated_annual_production": 15000.0
-    },
-    "billing_terms": {
-        "tariff_rate": 8.50,
-        "escalation_rate": 0.03,
-        "billing_cycle": "monthly",
-        "payment_terms": "net30"
-    },
+    "system_specs": { ... },
+    "billing_terms": { ... },
     "start_date": "2024-03-15T00:00:00Z",
     "end_date": "2034-03-14T00:00:00Z",
-    "status": "draft",
+    "contractStatus": "active",
+    "contractType": "net_metering",
     "created_at": "2024-03-15T10:00:00Z",
+    "updated_at": "2024-03-15T10:00:00Z",
+    "createdBy": "admin@chainfly.com",
+    "updatedBy": "admin@chainfly.com",
     "signed_at": null,
+    "signatories": [ ... ],
     "total_energy_produced": 0,
     "total_billed": 0,
     "total_paid": 0,
@@ -97,161 +124,99 @@ Response:
     "payment_history": [],
     "energy_production_history": [],
     "billing_history": [],
-    "file_path": null
+    "file_path": null,
+    "pdfDownloadLink": null,
+    "terminationClause": "Either party may terminate with 30 days written notice.",
+    "paymentTerms": "net30",
+    "curtailmentClauses": "Curtailment as per grid operator instructions.",
+    "generationGuarantees": "Minimum 95% of expected generation guaranteed.",
+    "subsidySchemeId": "MNRE-2024-01"
 }
 ```
 
-Field Descriptions:
-- `system_specs`:
-  - `capacity_kw`: System capacity in kilowatts
-  - `panel_type`: Type of solar panels (e.g., Monocrystalline, Polycrystalline)
-  - `inverter_type`: Type of inverter (e.g., String Inverter, Microinverter)
-  - `installation_date`: Date when the system was/will be installed
-  - `estimated_annual_production`: Estimated annual energy production in kWh
-- `billing_terms`:
-  - `tariff_rate`: Base tariff rate per kWh in Indian Rupees (e.g., 8.50 for ₹8.50/kWh)
-  - `escalation_rate`: Annual escalation rate (e.g., 0.03 for 3% annual increase)
-  - `billing_cycle`: Billing cycle (must be one of: monthly, quarterly, annually)
-  - `payment_terms`: Payment terms (must be one of: net15, net30, net45, net60)
-
-Validation Rules:
-- System capacity must be greater than 0
-- Estimated annual production must be greater than 0
-- Panel type and inverter type are required
-- Tariff rate must be greater than 0 (typically ₹3-12/kWh for Indian market)
-- Escalation rate cannot be negative (typically 0-5% for Indian market)
-- Billing cycle must be one of: monthly, quarterly, annually
-- Payment terms must be one of: net15, net30, net45, net60
-- Start date must be before end date
-- Start date cannot be more than 1 year in the past (for existing installations)
-- Start date cannot be more than 2 years in the future (for planned installations)
-- PPA status will be automatically set to "active" if start date is in the past or today
-- PPA status will be set to "draft" if start date is in the future
-
-#### List PPAs
-```http
-GET /ppas
-```
-Optional query parameter: `customer_id`
-
-#### Get PPA
-```http
-GET /ppas/{ppa_id}
-```
-
-#### Sign PPA
-```http
-POST /ppas/{ppa_id}/sign
-```
-
-#### Get PPA PDF
-```http
-GET /ppas/{ppa_id}/pdf
-```
-Generates a professional PPA document in Indian format with:
-- Agreement details with PPA number
-- System specifications
-- Billing terms in Indian Rupees
-- Standard Indian terms and conditions
-- Signature blocks for both parties
-
-### Energy Usage Management
-
-#### Add Energy Usage
-```http
-POST /ppas/{ppa_id}/energy-usage
-```
-Request body:
+Response (overlap error):
 ```json
 {
-    "kwh_used": 850.5,
-    "reading_date": "2024-03-15T00:00:00Z"
+    "detail": "Overlapping active/draft PPA exists for this customer/site.",
+    "errorCode": "PPA_OVERLAP",
+    "documentationLink": "https://docs.yourapi.com/errors#PPA_OVERLAP"
 }
 ```
 
-### Invoice Management
+### Field Descriptions & Enums
+- `contractType`: `net_metering`, `gross_metering`, `open_access`
+- `contractStatus`: `draft`, `active`, `expired`, `terminated`
+- `customerType`: `residential`, `commercial`, `C&I`, `industrial`, `government`, `other`
+- `unit`: Always specified (e.g., kW, kWh, INR)
+- `currency`: e.g., INR
+- `signatories`: Array of `{ name, role, signedAt }`
+- `slabs`: Array of `{ min, max, rate, unit }`
+- `touRates`: Array of `{ timeRange, rate, unit }`
+- `audit trail`: `createdBy`, `updatedBy`, `updated_at`
 
-#### Generate Invoice
-```http
-POST /ppas/{ppa_id}/invoices/generate
-```
-Request body:
+### Validation Rules
+- No two active/draft PPAs for the same site (overlap check)
+- latePaymentPenaltyRate ≤ 10%
+- All units must be specified
+- All enums must use allowed values
+- All required fields must be present
+
+### Error Responses
+
+#### 400/422 Validation Error
 ```json
 {
-    "kwh_used": 850.5,
-    "reading_date": "2024-03-15T00:00:00Z"
+    "detail": "Validation error message",
+    "errorCode": "VALIDATION_ERROR",
+    "documentationLink": "https://docs.yourapi.com/errors#VALIDATION_ERROR"
 }
 ```
 
-#### List PPA Invoices
-```http
-GET /ppas/{ppa_id}/invoices
-```
-
-#### Get Invoice PDF
-```http
-GET /ppas/{ppa_id}/invoices/{invoice_id}/pdf
-```
-
-#### Pay Invoice
-```http
-POST /ppas/{ppa_id}/invoices/{invoice_id}/pay
-```
-
-## Error Responses
-
-### 400 Bad Request
+#### 422 Overlapping PPA
 ```json
 {
-    "detail": "PPA is not active"
+    "detail": "Overlapping active/draft PPA exists for this customer/site.",
+    "errorCode": "PPA_OVERLAP",
+    "documentationLink": "https://docs.yourapi.com/errors#PPA_OVERLAP"
 }
 ```
 
-### 401 Unauthorized
+#### 404 Not Found
+```json
+{
+    "detail": "Customer not found"
+}
+```
+
+#### 401 Unauthorized
 ```json
 {
     "detail": "Invalid token"
 }
 ```
 
-### 404 Not Found
-```json
-{
-    "detail": "PPA not found"
-}
-```
-
-### 422 Unprocessable Entity
-```json
-{
-    "detail": [
-        {
-            "loc": ["body", "tariff_rate"],
-            "msg": "field required",
-            "type": "value_error.missing"
-        }
-    ]
-}
-```
-
-### 500 Internal Server Error
+#### 500 Internal Server Error
 ```json
 {
     "detail": "Internal server error"
 }
 ```
 
-## Data Models
+### Data Models
 
-### Customer
+#### Customer
 ```python
 class Customer(BaseModel):
+    id: Optional[str]
     name: str
     email: str
     address: str
+    customerType: CustomerType
+    gstNumber: Optional[str]
+    linkedPPAs: List[str]
 ```
 
-### SystemSpecifications
+#### SystemSpecifications
 ```python
 class SystemSpecifications(BaseModel):
     capacity_kw: float
@@ -259,59 +224,122 @@ class SystemSpecifications(BaseModel):
     inverter_type: str
     installation_date: datetime
     estimated_annual_production: float
+    systemLocation: Optional[SystemLocation]
+    moduleManufacturer: Optional[str]
+    inverterBrand: Optional[str]
+    expectedGeneration: Optional[float]
+    actualGeneration: Optional[float]
+    systemAgeInMonths: Optional[int]
 ```
 
-### BillingTerms
+#### BillingTerms
 ```python
 class BillingTerms(BaseModel):
     tariff_rate: float
     escalation_rate: float
     billing_cycle: str
     payment_terms: str
+    slabs: Optional[List[Slab]]
+    touRates: Optional[List[ToURate]]
+    taxRate: Optional[float]
+    latePaymentPenaltyRate: Optional[float]
+    currency: str
+    subsidySchemeId: Optional[str]
+    autoInvoice: bool
+    gracePeriodDays: int
 ```
 
-### PPA
+#### Slab
+```python
+class Slab(BaseModel):
+    min: float
+    max: float
+    rate: float
+    unit: str
+```
+
+#### ToURate
+```python
+class ToURate(BaseModel):
+    timeRange: str
+    rate: float
+    unit: str
+```
+
+#### Signatory
+```python
+class Signatory(BaseModel):
+    name: str
+    role: str
+    signedAt: Optional[datetime]
+```
+
+#### PPA
 ```python
 class PPA(BaseModel):
+    id: Optional[str]
     customer_id: str
     system_specs: SystemSpecifications
     billing_terms: BillingTerms
     start_date: datetime
     end_date: datetime
-    status: str
-    file_path: Optional[str]
+    contractStatus: ContractStatus
+    contractType: ContractType
     created_at: datetime
+    updated_at: Optional[datetime]
+    createdBy: Optional[str]
+    updatedBy: Optional[str]
     signed_at: Optional[datetime]
-    total_energy_produced: float = 0
-    total_billed: float = 0
-    total_paid: float = 0
+    signatories: List[Signatory]
+    total_energy_produced: float
+    total_billed: float
+    total_paid: float
     last_billing_date: Optional[datetime]
     contract_duration_years: float
     current_tariff_rate: float
     next_escalation_date: datetime
-    payment_history: List[dict] = []
-    energy_production_history: List[dict] = []
-    billing_history: List[dict] = []
+    payment_history: List[dict]
+    energy_production_history: List[dict]
+    billing_history: List[dict]
+    file_path: Optional[str]
+    pdfDownloadLink: Optional[str]
+    terminationClause: Optional[str]
+    paymentTerms: Optional[str]
+    curtailmentClauses: Optional[str]
+    generationGuarantees: Optional[str]
+    subsidySchemeId: Optional[str]
 ```
 
-### EnergyUsage
+#### EnergyUsage
 ```python
 class EnergyUsage(BaseModel):
+    ppa_id: str
     kwh_used: float
     reading_date: datetime
+    source: Optional[str]
+    unit: str
+    timestampStart: Optional[datetime]
+    timestampEnd: Optional[datetime]
+    importEnergy: Optional[float]
+    exportEnergy: Optional[float]
 ```
 
-### Invoice
+#### HTTPValidationError
 ```python
-class Invoice(BaseModel):
-    ppa_id: str
-    amount: float
-    kwh_used: float
-    tariff_rate: float
-    billing_date: datetime
-    due_date: datetime
-    status: str
-    paid_at: Optional[datetime]
+class HTTPValidationError(BaseModel):
+    detail: Any
+    errorCode: Optional[str]
+    documentationLink: Optional[str]
+```
+
+#### ValidationError
+```python
+class ValidationError(BaseModel):
+    loc: List[str]
+    msg: str
+    type: str
+    errorCode: Optional[str]
+    documentationLink: Optional[str]
 ```
 
 ## Setup and Installation
@@ -327,10 +355,10 @@ pip install -r requirements.txt
    - Download the service account key
    - Set the environment variable:
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"
+export FIREBASE_CREDENTIALS_JSON='{"type": ... }'
 ```
 
-4. Create a `.env` file with the following variables:
+4. Create a `.env` file with the following variables (optional):
 ```
 FIREBASE_PROJECT_ID=your-project-id
 ```

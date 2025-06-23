@@ -9,7 +9,7 @@ class EnergyUsage(BaseModel):
     customer_id: str
     month: int
     year: int
-    usage_kwh: float
+    kwh_used: float
     # The 'timestamp' field is fine, but it won't be saved to the Invoice model below.
     # To set a default value on creation, use `default_factory`.
     timestamp: datetime = datetime.now()
@@ -20,26 +20,26 @@ class Invoice(BaseModel):
     customer_id: str
     month: int
     year: int
-    usage_kwh: float
+    kwh_used: float
     tariff_rate: float
     total_amount: float
     status: str = "pending"
     created_at: datetime = datetime.now()
     paid_at: Optional[datetime] = None
 
-def calculate_invoice_amount(usage_kwh: float, tariff_rate: float) -> float:
+def calculate_invoice_amount(kwh_used: float, tariff_rate: float) -> float:
     """Calculate invoice amount based on usage and tariff"""
-    return round(usage_kwh * tariff_rate, 2)
+    return round(kwh_used * tariff_rate, 2)
 
 async def generate_invoice(usage: EnergyUsage, tariff_rate: float) -> Invoice:
     """Generate a new invoice for energy usage"""
-    total_amount = calculate_invoice_amount(usage.usage_kwh, tariff_rate)
+    total_amount = calculate_invoice_amount(usage.kwh_used, tariff_rate)
     
     invoice = Invoice(
         customer_id=usage.customer_id,
         month=usage.month,
         year=usage.year,
-        usage_kwh=usage.usage_kwh,
+        kwh_used=usage.kwh_used,
         tariff_rate=tariff_rate,
         total_amount=total_amount
     )
