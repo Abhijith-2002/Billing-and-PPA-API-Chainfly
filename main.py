@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Form
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Form, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,6 +9,10 @@ import os
 import tempfile
 from pydantic import BaseModel, Field, validator
 from enum import Enum
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+import requests
 
 # Import Firebase configuration with error handling
 try:
@@ -49,6 +53,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static directory for JS/CSS if needed
+if not os.path.exists('static'):
+    os.makedirs('static')
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 # --- ENUMS (match ppa_generator.py) ---
 class CustomerType(str, Enum):
@@ -536,6 +546,29 @@ async def check_overlapping_ppa(customer_id: str, start_date: datetime, end_date
             if not (end_date <= ppa['start_date'] or start_date >= ppa['end_date']):
                 return True
     return False
+
+@app.get("/", response_class=HTMLResponse)
+def serve_frontend(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY")
+if not FIREBASE_API_KEY:
+    raise RuntimeError("FIREBASE_API_KEY environment variable must be set for authentication.")
+
+@app.post("/auth/login")
+def login_auth(data: dict):
+    email = data.get("email")
+    password = data.get("password")
+    if not email or not password:
+        return {"error": "Email and password required."}
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True
+    }
+    resp = requests.post(url, json=payload)
+    return resp.json()
 
 if __name__ == "__main__":
     import uvicorn

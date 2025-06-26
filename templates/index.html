@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Billing & PPA API Tester</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h2 { margin-top: 2rem; }
+        form { margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-top: 0.5rem; }
+        input, select, textarea { width: 100%; padding: 0.5rem; margin-top: 0.2rem; }
+        button { margin-top: 1rem; padding: 0.5rem 1rem; }
+        .results { margin-top: 1rem; background: #f9f9f9; padding: 0.7rem; border-radius: 8px; }
+        .section { margin-bottom: 2rem; }
+        .note { font-size: 0.95em; color: #666; margin-top: 0.5rem; }
+        .inline-btn { display: inline-block; margin-right: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>Solar Billing & PPA API Tester</h1>
+    <div class="section">
+        <h2>1. Authenticate (Email & Password)</h2>
+        <form id="auth-form">
+            <label>Email <input type="email" id="auth-email" required></label>
+            <label>Password <input type="password" id="auth-password" required></label>
+            <button type="submit">Get Token</button>
+        </form>
+        <div class="note">The API key for authentication is handled securely on the backend and never exposed to the browser.</div>
+        <div class="results" id="results-auth"></div>
+    </div>
+    <div class="section">
+        <h2>2. Create Customer</h2>
+        <form id="customer-form">
+            <label>Name <input type="text" name="name" required></label>
+            <label>Email <input type="email" name="email" required></label>
+            <label>Address <input type="text" name="address" required></label>
+            <label>Customer Type
+                <select name="customerType" required>
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="ci">C&I</option>
+                    <option value="industrial">Industrial</option>
+                    <option value="government">Government</option>
+                    <option value="other">Other</option>
+                </select>
+            </label>
+            <label>GST Number (optional) <input type="text" name="gstNumber"></label>
+            <button type="submit">Create Customer</button>
+        </form>
+        <button id="list-customers-btn" class="inline-btn">List Customers</button>
+        <div class="results" id="results-customer"></div>
+    </div>
+    <div class="section">
+        <h2>3. Create PPA</h2>
+        <form id="ppa-form">
+            <label>Customer ID <input type="text" name="customer_id" required></label>
+            <label>Start Date <input type="date" name="start_date" required></label>
+            <label>End Date <input type="date" name="end_date" required></label>
+            <fieldset style="margin-top:1em;">
+                <legend>System Specifications</legend>
+                <label>Capacity (kW) <input type="number" step="0.01" name="capacity_kw" required></label>
+                <label>Panel Type <input type="text" name="panel_type" required></label>
+                <label>Inverter Type <input type="text" name="inverter_type" required></label>
+                <label>Installation Date <input type="date" name="installation_date" required></label>
+                <label>Estimated Annual Production (kWh) <input type="number" step="0.01" name="estimated_annual_production" required></label>
+                <label>Module Manufacturer <input type="text" name="moduleManufacturer"></label>
+                <label>Inverter Brand <input type="text" name="inverterBrand"></label>
+                <label>Expected Generation (kWh) <input type="number" step="0.01" name="expectedGeneration"></label>
+                <label>Actual Generation (kWh) <input type="number" step="0.01" name="actualGeneration"></label>
+                <label>System Age (months) <input type="number" name="systemAgeInMonths"></label>
+                <fieldset>
+                    <legend>System Location</legend>
+                    <label>Latitude <input type="number" step="0.0001" name="lat"></label>
+                    <label>Longitude <input type="number" step="0.0001" name="long"></label>
+                </fieldset>
+            </fieldset>
+            <fieldset style="margin-top:1em;">
+                <legend>Billing Terms</legend>
+                <label>Tariff Rate (INR/kWh) <input type="number" step="0.01" name="tariff_rate" required></label>
+                <label>Escalation Rate <input type="number" step="0.01" name="escalation_rate" value="0.02"></label>
+                <label>Billing Cycle
+                    <select name="billing_cycle">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annually">Annually</option>
+                    </select>
+                </label>
+                <label>Payment Terms
+                    <select name="payment_terms">
+                        <option value="net15">Net 15</option>
+                        <option value="net30">Net 30</option>
+                        <option value="net45">Net 45</option>
+                        <option value="net60">Net 60</option>
+                    </select>
+                </label>
+                <label>Tax Rate (%) <input type="number" step="0.01" name="taxRate"></label>
+                <label>Late Payment Penalty Rate (%) <input type="number" step="0.01" name="latePaymentPenaltyRate"></label>
+                <label>Currency <input type="text" name="currency" value="INR"></label>
+                <label>Subsidy Scheme ID <input type="text" name="subsidySchemeId"></label>
+                <label>Auto Invoice <input type="checkbox" name="autoInvoice"></label>
+                <label>Grace Period Days <input type="number" name="gracePeriodDays"></label>
+                <div id="slabs-section">
+                    <label>Slabs</label>
+                    <div id="slabs-list"></div>
+                    <button type="button" id="add-slab-btn">Add Slab</button>
+                </div>
+                <div id="tou-section" style="margin-top:1em;">
+                    <label>ToU Rates</label>
+                    <div id="tou-list"></div>
+                    <button type="button" id="add-tou-btn">Add ToU Rate</button>
+                </div>
+            </fieldset>
+            <fieldset style="margin-top:1em;">
+                <legend>Signatories</legend>
+                <div id="signatories-list"></div>
+                <button type="button" id="add-signatory-btn">Add Signatory</button>
+            </fieldset>
+            <label>Termination Clause <input type="text" name="terminationClause"></label>
+            <label>Payment Terms (Override) <input type="text" name="paymentTerms"></label>
+            <label>Curtailment Clauses <input type="text" name="curtailmentClauses"></label>
+            <label>Generation Guarantees <input type="text" name="generationGuarantees"></label>
+            <label>Created By <input type="text" name="createdBy"></label>
+            <button type="submit">Create PPA</button>
+        </form>
+        <button id="list-ppas-btn" class="inline-btn">List PPAs</button>
+        <div class="results" id="results-ppa"></div>
+    </div>
+    <div class="section">
+        <h2>3b. List PPAs (with optional Customer ID filter)</h2>
+        <form id="list-ppas-form">
+            <label>Customer ID (optional) <input type="text" name="customer_id"></label>
+            <button type="submit">List PPAs</button>
+        </form>
+        <div class="results" id="results-list-ppas"></div>
+    </div>
+    <div class="section">
+        <h2>3c. Get PPA by ID</h2>
+        <form id="get-ppa-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <button type="submit">Get PPA</button>
+        </form>
+        <div class="results" id="results-get-ppa"></div>
+    </div>
+    <div class="section">
+        <h2>3d. Sign PPA</h2>
+        <form id="sign-ppa-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <button type="submit">Sign PPA</button>
+        </form>
+        <div class="results" id="results-sign-ppa"></div>
+    </div>
+    <div class="section">
+        <h2>4. Download PPA PDF</h2>
+        <form id="ppa-pdf-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <button type="submit">Download PPA PDF</button>
+        </form>
+        <div class="results" id="results-ppa-pdf"></div>
+    </div>
+    <div class="section">
+        <h2>5. Add Energy Usage</h2>
+        <form id="usage-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <label>kWh Used <input type="number" step="0.01" name="kwh_used" required></label>
+            <label>Reading Date <input type="datetime-local" name="reading_date" required></label>
+            <label>Source <input type="text" name="source"></label>
+            <label>Unit <input type="text" name="unit" value="kWh"></label>
+            <label>Timestamp Start <input type="datetime-local" name="timestampStart"></label>
+            <label>Timestamp End <input type="datetime-local" name="timestampEnd"></label>
+            <label>Import Energy <input type="number" step="0.01" name="importEnergy"></label>
+            <label>Export Energy <input type="number" step="0.01" name="exportEnergy"></label>
+            <button type="submit">Add Usage</button>
+        </form>
+        <div class="results" id="results-usage"></div>
+    </div>
+    <div class="section">
+        <h2>6. Generate Invoice</h2>
+        <form id="invoice-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <label>kWh Used <input type="number" step="0.01" name="kwh_used" required></label>
+            <label>Reading Date <input type="datetime-local" name="reading_date" required></label>
+            <button type="submit">Generate Invoice</button>
+        </form>
+        <button id="list-invoices-btn" class="inline-btn">List Invoices for PPA</button>
+        <div class="results" id="results-invoice"></div>
+    </div>
+    <div class="section">
+        <h2>7. Download Invoice PDF</h2>
+        <form id="pdf-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <label>Invoice ID <input type="text" name="invoice_id" required></label>
+            <button type="submit">Download PDF</button>
+        </form>
+        <form id="pay-invoice-form">
+            <label>PPA ID <input type="text" name="ppa_id" required></label>
+            <label>Invoice ID <input type="text" name="invoice_id" required></label>
+            <button type="submit">Mark Invoice as Paid</button>
+        </form>
+        <div class="results" id="results-pdf"></div>
+    </div>
+    <div class="note">Tip: Copy IDs from the results above to use in subsequent forms.</div>
+    <script src="/static/app.js" defer></script>
+</body>
+</html> 
